@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import toast, { Toaster } from 'react-hot-toast';
+import { fetchProductsByQuery, fetchProducts, clearProducts} from '../Redux/Slices/productSlices';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+
+//** Homepage product fetching is done , and i have to improve the homepage design and add more features.
 
 const HomePage = () => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching , setIsSearching] = useState(false);
+
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const {products , loading , error } = useSelector((state)=> state.productsList)
 
   // Toggle the slider menu
   const toggleMenu = () => {
@@ -16,29 +23,25 @@ const HomePage = () => {
   // Handle search query
   const handleSearch = (e) => {
     e.preventDefault();
-    alert(`Search for: ${searchQuery}`);
-  };
+    setIsSearching(true);
+    dispatch(clearProducts());
 
-  // Fetch products from the backend
-  const fetchProducts = async () => {
-    setLoading(true); // Start loading
-    const toastId = toast.loading('Loading products...'); // Show loading toast
-    try {
-      const response = await axios.get('/');
-      const shuffledProducts = response.data.sort(() => Math.random() - 0.5);
-      setProducts(shuffledProducts);
-      toast.success('Products loaded successfully!', { id: toastId }); // Replace loading toast with success
-    } catch (error) {
-      toast.error('Error fetching products!', { id: toastId }); // Replace loading toast with error
-      console.error('Error fetching products', error);
-    } finally {
-      setLoading(false); // End loading
+    if (searchQuery.trim()){
+      dispatch(fetchProductsByQuery(searchQuery));
+      navigate("/products/fetchProductsByQuery");
+    }else{
+      setIsSearching(false);
+      dispatch(fetchProducts());
     }
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    if(!isSearching){
+      dispatch(clearProducts());
+      dispatch(fetchProducts());
+    }
+    
+  }, [dispatch , isSearching]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -98,15 +101,15 @@ const HomePage = () => {
         <h2 className="text-2xl font-bold mb-4">Popular Products</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {!loading && products.length > 0 ? (
-            products.map((product) => (
-              <div key={product.id} className="border p-4 rounded-md shadow-lg text-center">
+            products.map((product , index) => (
+              <div key={index} className="border p-4 rounded-md shadow-lg text-center">
                 <img
-                  src={product.image}
+                  src={product.images[0].secure_url}
                   alt={product.name}
                   className="w-full h-48 object-cover mb-2"
                 />
-                <p className="font-semibold">{product.name}</p>
-                <p className="text-gray-600">${product.price}</p>
+                <p className="font-semibold text-wrap">{product.name}</p>
+                <p className="text-gray-600 ">{product.price}rs</p>
               </div>
             ))
           ) : null}

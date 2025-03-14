@@ -1,17 +1,22 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import axiosInstance from '../../Helpers/axiosInstance';
 
-// API Base URL
-const API_BASE_URL = '/api/v1/products';
 
-// Async thunks to handle API calls
+// Initial state for the slice
+const initialState = {
+  products: [],
+  loading: false,
+  error: null,
+};
+
 
 // Fetch all products
-export const fetchProducts = createAsyncThunk('products/fetchProducts', async (_, { rejectWithValue }) => {
+export const fetchProducts = createAsyncThunk('/products/fetchProducts', async (_, { rejectWithValue }) => {
   try {
-    const { data } = await axios.get(API_BASE_URL);
-    return data.products;
+    const { data } = await axiosInstance.get('/product');
+    console.log("Data:",data);
+    return data?.products;
   } catch (error) {
     toast.error('Error fetching products');
     return rejectWithValue(error.response.data.message);
@@ -19,22 +24,41 @@ export const fetchProducts = createAsyncThunk('products/fetchProducts', async (_
 });
 
 // Fetch a single product by ID
-export const fetchProductById = createAsyncThunk('products/fetchProductById', async (id, { rejectWithValue }) => {
+export const fetchProductById = createAsyncThunk('/products/fetchProductById', async (id, { rejectWithValue }) => {
   try {
-    const { data } = await axios.get(`${API_BASE_URL}/${id}`);
-    return data.product;
+    const { data } = await axiosInstance.get(`/product/${id}`);
+    return data?.product;
   } catch (error) {
     toast.error('Error fetching product');
     return rejectWithValue(error.response.data.message);
   }
 });
 
+//Fetch Products by query
+
+export const fetchProductsByQuery = createAsyncThunk(
+  '/products/fetchProductsByQuery',
+  async (query, { rejectWithValue }) => {
+    try {
+      const { data } = await axiosInstance.get(`/product/search`, {
+        params: { query: query }, // Use 'params' to add the query string
+      });
+      return data?.products; 
+    } catch (error) {
+      toast.error('Error in searching Products');
+      return rejectWithValue(error.response?.data?.message || 'Something went wrong');
+    }
+  }
+);
+
+
+
 // Create a product (Admin, Seller)
-export const createProduct = createAsyncThunk('products/createProduct', async (productData, { rejectWithValue }) => {
+export const createProduct = createAsyncThunk('/products/createProduct', async (productData, { rejectWithValue }) => {
   try {
-    const { data } = await axios.post(API_BASE_URL, productData);
+    const { data } = await axiosInstance.post('/product', productData);
     toast.success('Product created successfully');
-    return data.product;
+    return data?.product;
   } catch (error) {
     toast.error('Error creating product');
     return rejectWithValue(error.response.data.message);
@@ -42,11 +66,11 @@ export const createProduct = createAsyncThunk('products/createProduct', async (p
 });
 
 // Update a product (Admin, Seller)
-export const updateProduct = createAsyncThunk('products/updateProduct', async ({ id, productData }, { rejectWithValue }) => {
+export const updateProduct = createAsyncThunk('/products/updateProduct', async ({ id, productData }, { rejectWithValue }) => {
   try {
-    const { data } = await axios.put(`${API_BASE_URL}/${id}`, productData);
+    const { data } = await axiosInstance.put(`product/${id}`, productData);
     toast.success('Product updated successfully');
-    return data.product;
+    return data?.product;
   } catch (error) {
     toast.error('Error updating product');
     return rejectWithValue(error.response.data.message);
@@ -54,9 +78,9 @@ export const updateProduct = createAsyncThunk('products/updateProduct', async ({
 });
 
 // Delete a product (Admin, Seller)
-export const deleteProduct = createAsyncThunk('products/deleteProduct', async (id, { rejectWithValue }) => {
+export const deleteProduct = createAsyncThunk('/products/deleteProduct', async (id, { rejectWithValue }) => {
   try {
-    await axios.delete(`${API_BASE_URL}/${id}`);
+    await axiosInstance.delete(`product/${id}`);
     toast.success('Product deleted successfully');
     return id;
   } catch (error) {
@@ -65,22 +89,15 @@ export const deleteProduct = createAsyncThunk('products/deleteProduct', async (i
   }
 });
 
-// Initial state for the slice
-const initialState = {
-  products: [],
-  product: null,
-  loading: false,
-  error: null,
-};
 
 // Product slice
 const productSlice = createSlice({
-  name: 'products',
+  name: 'productsList',
   initialState,
   reducers: {
-    clearProduct(state) {
-      state.product = null;
-    },
+    clearProducts : (state)=>{
+      state.products = [];
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -98,6 +115,7 @@ const productSlice = createSlice({
         state.error = action.payload;
       })
 
+      
       // Fetch product by ID
       .addCase(fetchProductById.pending, (state) => {
         state.loading = true;
@@ -105,9 +123,23 @@ const productSlice = createSlice({
       })
       .addCase(fetchProductById.fulfilled, (state, action) => {
         state.loading = false;
-        state.product = action.payload;
+        state.products.push(action.payload);
       })
       .addCase(fetchProductById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+
+      //Fetch Product by query
+      .addCase(fetchProductsByQuery.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchProductsByQuery.fulfilled, (state, action) => {
+        state.loading = false;
+        state.products = action.payload;
+      })
+      .addCase(fetchProductsByQuery.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
@@ -160,5 +192,5 @@ const productSlice = createSlice({
 });
 
 // Export actions and reducer
-export const { clearProduct } = productSlice.actions;
+export const { clearProducts } = productSlice.actions;
 export default productSlice.reducer;
