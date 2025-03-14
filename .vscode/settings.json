@@ -1,0 +1,6 @@
+{
+    "editor.suggest.showStatusBar": true,
+    "problems.showCurrentInStatus": false,
+    "cmake.options.statusBarVisibility": "hidden",
+    "zenMode.hideStatusBar": false
+}
